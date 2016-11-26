@@ -17,7 +17,7 @@ app.post('/login', function(req, res) {
   db.qq('SELECT * FROM userz WHERE username = $1 AND password = $2', [u, p], function(err, result) {
     if (err) {
       res.status(500).send("error:",err); // doesnt even redirect u
-    } else if (result.rows < 1) {
+    } else if (result.rows.length < 1) {
       res.redirect('/fu4eva'); //whatev
     } else {
       loggedIn = true;
