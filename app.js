@@ -1,14 +1,21 @@
 var db = require('./db');
 var views = require('./fuckery'); // is this proper // do i give a damn // important questions
 
-var loggedIn = false; // lol. ...... LOL
 var port = process.env.PORT || 8888;
 
 var bodyParser = require('body-parser');
+var session = require('client-sessions');
+
 var express = require('express');
 var app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+app.use(session({
+  cookieName: 'session',
+  secret: 'what the fuck',
+  duration: 30*60*1000, //30 minz
+  activeDuration: 5*60*1000 //5minz
+}));
 
 app.post('/login', function(req, res) {
   // query db
@@ -20,27 +27,39 @@ app.post('/login', function(req, res) {
     } else if (result.rows.length < 1) {
       res.redirect('/fu4eva'); //whatev
     } else {
-      loggedIn = true;
+      req.session.user = result.rows[0].username; // what the hell else would i need
       res.redirect('/');
     }
   });
 });
 
 app.all('/logout', function(req, res) {
-  loggedIn = false;
+  req.session.reset();
   res.redirect('/');
 });
 
 app.all('/fu4eva', function(req, res) {
-  res.send(views.bad_login_view);
+  res.send(views.bad_login_view());
 });
 
-app.use('/', function(req, res) {
-  if (loggedIn) {
-    res.send(views.logged_in_view);
+app.all('/', function(req, res) {
+  if (req.session && req.session.user) {
+    db.qq('SELECT * FROM userz WHERE username = $1', [req.session.user], function(err, result) {
+      if (result.rows.length < 1) {
+        req.session.reset();
+        res.send(views.logged_out_view());
+      } else {
+        res.send(views.logged_in_view(req.session.user));
+      }
+    });
   } else {
-    res.send(views.logged_out_view);
+    res.send(views.logged_out_view());
   }
+});
+
+app.use(function(req, res) {
+  // do i care
+  res.status(404).send("this is a jank af 404");
 });
 
 app.listen(port);
